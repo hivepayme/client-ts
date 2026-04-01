@@ -1,0 +1,60 @@
+{
+  "name": "@hivepay/client",
+  "version": "1.1.2",
+  "description": "Official TypeScript client for the HivePay payment gateway API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist .tsbuildinfo",
+    "lint": "eslint src --fix --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "hivepay",
+    "hive",
+    "blockchain",
+    "payment",
+    "gateway",
+    "api",
+    "client",
+    "typescript"
+  ],
+  "author": "HivePay Team",
+  "license": "MIT",
+  "homepage": "https://hivepay.me",
+  "bugs": {
+    "email": "devs@hivepay.me",
+    "url": "https://github.com/hivepayme/client-ts/issues"
+  },
+  "packageManager": "pnpm@10.0.0+sha512.b8fef5494bd3fe4cbd4edabd0745df2ee5be3e4b0b8b08fa643aa3e4c6702ccc0f00d68fa8a8c9858a735a0032485a44990ed2810526c875e416f001b17df12b",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hivepayme/client-ts.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.6.0"
+  },
+  "sideEffects": false
+}
