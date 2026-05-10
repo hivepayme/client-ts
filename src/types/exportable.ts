@@ -27,6 +27,20 @@ export type {
   ListMerchantsOptions,
   PaginatedMerchants,
 
+  // Billing types
+  BillingPeriodStatus,
+  BillingPeriod,
+  AdminBillingPeriod,
+  PaginatedAdminBillingPeriods,
+  ListBillingPeriodsOptions,
+  MerchantBillingCurrentMonth,
+  MerchantBillingSummary,
+  BillingOverview,
+  BillingOverviewMerchantRow,
+  GenerateInvoicesOptions,
+  GenerateInvoicesResult,
+  FeeTier,
+
   // Pagination types
   PaginationInfo,
 

@@ -6,3 +6,4 @@
 export { Payments } from './payments.js';
 export { Merchants } from './merchants.js';
 export { Admin } from './admin.js';
+export { Billing } from './billing.js';

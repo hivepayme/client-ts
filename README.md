@@ -80,9 +80,9 @@ const payment = await hivepay.payments.create({
 
 console.log(payment.id);          // Payment ID
 console.log(payment.checkoutUrl); // URL to redirect customer
-console.log(payment.fee);         // Fee amount
-console.log(payment.net);         // Net amount you receive
 ```
+
+The full payment amount is transferred to your Hive account at settlement. HivePay does not deduct anything from individual transactions — fees are billed separately as a single monthly invoice (see [Billing](#billing)).
 
 #### Get Payment Details
 
@@ -145,13 +145,6 @@ for await (const payment of hivepay.payments) {
 for await (const payment of hivepay.payments.iterate({ pageSize: 50 })) {
   await processPayment(payment);
 }
-```
-
-#### Get Current Fee Rate
-
-```typescript
-const feePercent = await hivepay.payments.getFeeRate();
-console.log(`Current fee: ${feePercent}%`); // e.g., "1.5%"
 ```
 
 ### Merchants
@@ -273,6 +266,31 @@ if (result.success) {
 }
 ```
 
+### Billing
+
+HivePay charges merchants on a monthly cycle. Volume processed in a calendar month is billed as a single invoice using the configured fee tiers.
+
+#### Get Your Billing Summary
+
+```typescript
+const summary = await hivepay.billing.getMine();
+
+// Running totals for the current month
+console.log(summary.currentMonth.totalVolumeCents);     // e.g. 12500 ($125)
+console.log(summary.currentMonth.transactionCount);     // e.g. 42
+console.log(summary.currentMonth.projectedInvoiceCents); // estimated month-end fee
+
+// Outstanding invoices include a hosted URL the merchant can pay at
+for (const invoice of summary.outstandingInvoices) {
+  console.log(invoice.invoiceAmountCents);  // amount in USD cents
+  console.log(invoice.status);              // 'invoiced' | 'overdue'
+  console.log(invoice.invoicePaymentUrl);   // open or share to pay
+}
+
+// Paid invoice history
+console.log(summary.totalPaidCents);
+```
+
 ### Admin Operations
 
 Admin endpoints require an API key with admin privileges.
@@ -321,6 +339,64 @@ await hivepay.admin.setActive('merchant_id', true);
 
 // Deactivate a merchant
 await hivepay.admin.setActive('merchant_id', false);
+```
+
+#### Billing Overview
+
+```typescript
+const overview = await hivepay.billing.getOverview();
+
+console.log(overview.totals.merchantsCount);           // total billable merchants
+console.log(overview.totals.merchantsBehindCount);     // merchants with overdue or 2+ unpaid invoices
+console.log(overview.totals.totalOutstandingCents);    // sum of unpaid invoices
+console.log(overview.totals.currentMonthVolumeCents);  // running volume across all merchants
+
+for (const m of overview.merchants.filter(r => r.isBehind)) {
+  console.log(`${m.merchantName} owes ${m.outstandingAmountCents / 100} USD`);
+  console.log(`  oldest unpaid: ${m.oldestUnpaidPeriodStart}`);
+}
+```
+
+#### Inspect a Single Merchant's Billing
+
+```typescript
+const detail = await hivepay.billing.getMerchantSummary('merchant_id');
+// Same shape as billing.getMine(), but for any merchant.
+```
+
+#### List Billing Periods
+
+```typescript
+// All overdue invoices across the platform
+const overdue = await hivepay.billing.listPeriods({ status: 'overdue' });
+for (const period of overdue.data)
+  console.log(period.merchantName, period.invoiceAmountCents, period.invoicePaymentUrl);
+
+// Iterate
+for await (const p of hivepay.billing.iteratePeriods({ status: 'invoiced' }))
+  console.log(p.merchantName, p.invoicePaymentUrl);
+```
+
+#### Generate Invoices for a Month
+
+Idempotent — runs that pick up a period that already has an invoice are skipped.
+
+```typescript
+const result = await hivepay.billing.generateInvoices({ month: 4, year: 2026 });
+console.log(`Generated ${result.invoicesGenerated} invoices, total ${result.totalBilledCents / 100} USD`);
+```
+
+#### Manage Fee Tiers
+
+```typescript
+// Read
+const { tiers } = await hivepay.billing.getTiers();
+
+// Replace (must be contiguous, starting at 0; only the last tier may be open-ended)
+await hivepay.billing.setTiers([
+  { minVolumeCents: 0,      maxVolumeCents: 99999, percentFee: 2.0 },
+  { minVolumeCents: 100000, maxVolumeCents: null,  percentFee: 1.5 }
+]);
 ```
 
 ## Error Handling

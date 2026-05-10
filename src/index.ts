@@ -38,6 +38,5 @@ export type * as HivePayTypes from './types/exportable.js';
 // Re-export error class and helper for error handling
 export { HivePayError, isHivePayError } from './errors.js';
 
-// Fee calculation utilities
-export { getSplitAmount, getSplitAmountFromFormatted, formatSatoshis } from './fee.js';
-export type { SplitAmount, FormattedSplitAmount } from './fee.js';
+// Formatting utilities
+export { formatSatoshis } from './fee.js';

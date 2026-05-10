@@ -7,7 +7,7 @@
 import { HivePayError } from './errors.js';
 import { HttpClient } from './http.js';
 import type { HivePayConfig, VerifyWebhookOptions, VerifyWebhookResult } from './types/index.js';
-import { Admin, Merchants, Payments } from './resources/index.js';
+import { Admin, Billing, Merchants, Payments } from './resources/index.js';
 import { createWebhookSignatureInternal, verifyWebhookInternal } from './webhooks.js';
 
 /**
@@ -109,6 +109,27 @@ export class HivePay {
   public readonly admin: Admin;
 
   /**
+   * Billing resource for subscription billing.
+   *
+   * Merchants can read their own billing summary; admins can also see the
+   * platform-wide overview, run invoice generation, and tweak fee tiers.
+   *
+   * @example
+   * ```ts
+   * // Merchant view
+   * const summary = await hivepay.billing.getMine();
+   * for (const invoice of summary.outstandingInvoices) {
+   *   console.log('Pay at:', invoice.invoicePaymentUrl);
+   * }
+   *
+   * // Admin view
+   * const overview = await admin.billing.getOverview();
+   * console.log(overview.totals.merchantsBehindCount, 'merchants behind');
+   * ```
+   */
+  public readonly billing: Billing;
+
+  /**
    * Creates a new HivePay client instance.
    *
    * @param config - Client configuration options
@@ -141,6 +162,7 @@ export class HivePay {
     this.payments = new Payments(this.http);
     this.merchants = new Merchants(this.http);
     this.admin = new Admin(this.http);
+    this.billing = new Billing(this.http);
   }
 
   /**
@@ -175,6 +197,7 @@ export class HivePay {
     Object.defineProperty(instance, 'payments', { value: new Payments(newHttp) });
     Object.defineProperty(instance, 'merchants', { value: new Merchants(newHttp) });
     Object.defineProperty(instance, 'admin', { value: new Admin(newHttp) });
+    Object.defineProperty(instance, 'billing', { value: new Billing(newHttp) });
 
     return instance;
   }

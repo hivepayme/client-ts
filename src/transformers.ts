@@ -5,14 +5,22 @@
  */
 
 import type {
+  AdminBillingPeriod,
   AdminMerchant,
+  ApiAdminBillingPeriod,
+  ApiBillingOverview,
+  ApiBillingPeriod,
   ApiCreatePaymentResponse,
   ApiMerchant,
+  ApiMerchantBillingSummary,
   ApiPaymentSession,
   ApiPaymentStatusResponse,
   ApiWebhookPayload,
+  BillingOverview,
+  BillingPeriod,
   CreatedPayment,
   Merchant,
+  MerchantBillingSummary,
   Payment,
   PaymentStatus,
   WebhookEvent
@@ -80,9 +88,7 @@ export function toCreatedPayment (api: ApiCreatePaymentResponse): CreatedPayment
   return {
     id: api.id,
     slug: api.slug,
-    checkoutUrl: api.redirectUrl,
-    fee: api.fee,
-    net: api.net
+    checkoutUrl: api.redirectUrl
   };
 }
 
@@ -138,4 +144,69 @@ export function toWebhookEvent (api: ApiWebhookPayload, timestamp: number): Webh
  */
 export function isTerminalStatus (status: PaymentStatus): boolean {
   return ['completed', 'failed', 'expired', 'cancelled'].includes(status);
+}
+
+/**
+ * Transforms an API billing period to the public BillingPeriod type.
+ */
+export function toBillingPeriod (api: ApiBillingPeriod): BillingPeriod {
+  return {
+    id: api.id,
+    periodStart: new Date(api.periodStart),
+    periodEnd: new Date(api.periodEnd),
+    totalVolumeCents: api.totalVolumeCents,
+    transactionCount: api.transactionCount,
+    invoiceAmountCents: api.invoiceAmountCents,
+    status: api.status,
+    invoiceSessionId: api.invoiceSessionId,
+    invoiceSlug: api.invoiceSlug,
+    invoicePaymentUrl: api.invoicePaymentUrl,
+    createdAt: new Date(api.createdAt),
+    updatedAt: new Date(api.updatedAt)
+  };
+}
+
+/**
+ * Transforms an admin API billing period (which carries merchant fields) to AdminBillingPeriod.
+ */
+export function toAdminBillingPeriod (api: ApiAdminBillingPeriod): AdminBillingPeriod {
+  return {
+    ...toBillingPeriod(api),
+    merchantId: api.merchantId,
+    merchantName: api.merchantName,
+    merchantHiveAccountName: api.merchantHiveAccountName,
+    merchantIconUrl: api.merchantIconUrl
+  };
+}
+
+/**
+ * Transforms an API merchant billing summary to the public MerchantBillingSummary type.
+ */
+export function toMerchantBillingSummary (api: ApiMerchantBillingSummary): MerchantBillingSummary {
+  return {
+    merchantId: api.merchantId,
+    merchantName: api.merchantName,
+    currentMonth: {
+      periodStart: new Date(api.currentMonth.periodStart),
+      periodEnd: new Date(api.currentMonth.periodEnd),
+      totalVolumeCents: api.currentMonth.totalVolumeCents,
+      transactionCount: api.currentMonth.transactionCount,
+      projectedInvoiceCents: api.currentMonth.projectedInvoiceCents
+    },
+    outstandingInvoices: api.outstandingInvoices.map(toBillingPeriod),
+    paidInvoices: api.paidInvoices.map(toBillingPeriod),
+    outstandingAmountCents: api.outstandingAmountCents,
+    totalPaidCents: api.totalPaidCents,
+    feeTiers: api.feeTiers
+  };
+}
+
+/**
+ * Transforms the API billing overview into the public BillingOverview type.
+ */
+export function toBillingOverview (api: ApiBillingOverview): BillingOverview {
+  return {
+    totals: api.totals,
+    merchants: api.merchants.map(row => ({ ...row }))
+  };
 }

@@ -131,10 +131,6 @@ export interface CreatedPayment {
   slug: string;
   /** URL to redirect customer to complete payment */
   checkoutUrl: string;
-  /** Fee amount that will be charged upon completion */
-  fee: string;
-  /** Net amount merchant will receive */
-  net: string;
 }
 
 /**
@@ -286,6 +282,115 @@ export interface PaginatedMerchants {
 }
 
 /**
+ * Status of a billing period.
+ */
+export type BillingPeriodStatus = 'open' | 'invoiced' | 'paid' | 'overdue';
+
+/**
+ * Billing period — a single month of merchant activity that may have an invoice attached.
+ */
+export interface BillingPeriod {
+  /** Unique billing period ID */
+  id: string;
+  /** Start of the billing period (UTC, first day of the month) */
+  periodStart: Date;
+  /** End of the billing period (exclusive, first day of the next month) */
+  periodEnd: Date;
+  /** Total processed payment volume during the period in USD cents */
+  totalVolumeCents: number;
+  /** Number of completed payment transactions during the period */
+  transactionCount: number;
+  /** Invoice amount in USD cents (matches the invoice session amount) */
+  invoiceAmountCents: number;
+  /** Current invoice status */
+  status: BillingPeriodStatus;
+  /** ID of the payment session backing the invoice */
+  invoiceSessionId: string | null;
+  /** Slug of the invoice session (used to build payment URLs) */
+  invoiceSlug: string | null;
+  /** Hosted URL the merchant can use to pay the invoice (only present while unpaid) */
+  invoicePaymentUrl: string | null;
+  /** When the billing period was created */
+  createdAt: Date;
+  /** When the billing period was last updated */
+  updatedAt: Date;
+}
+
+/**
+ * Current-month billing summary for a single merchant.
+ */
+export interface MerchantBillingCurrentMonth {
+  /** Start of the current month (UTC) */
+  periodStart: Date;
+  /** End of the current month (exclusive) */
+  periodEnd: Date;
+  /** Volume processed so far this month (USD cents) */
+  totalVolumeCents: number;
+  /** Number of completed transactions so far this month */
+  transactionCount: number;
+  /** Projected invoice amount at month-end at the prevailing tier (USD cents) */
+  projectedInvoiceCents: number;
+}
+
+/**
+ * Billing summary for a merchant — current month plus invoice history.
+ */
+export interface MerchantBillingSummary {
+  /** Merchant ID this summary belongs to */
+  merchantId: string;
+  /** Merchant display name */
+  merchantName: string;
+  /** Running totals for the current month */
+  currentMonth: MerchantBillingCurrentMonth;
+  /** Unpaid invoices (status invoiced or overdue) */
+  outstandingInvoices: BillingPeriod[];
+  /** Paid invoices */
+  paidInvoices: BillingPeriod[];
+  /** Sum of unpaid invoice amounts (USD cents) */
+  outstandingAmountCents: number;
+  /** Sum of paid invoice amounts to date (USD cents) */
+  totalPaidCents: number;
+  /** Fee tier schedule currently in effect, sorted ascending by minVolumeCents */
+  feeTiers: FeeTier[];
+}
+
+/**
+ * Single merchant row in an admin billing overview.
+ */
+export interface BillingOverviewMerchantRow {
+  merchantId: string;
+  merchantName: string;
+  hiveAccountName: string;
+  iconUrl?: string;
+  currentMonthVolumeCents: number;
+  currentMonthProjectedCents: number;
+  outstandingInvoices: number;
+  outstandingAmountCents: number;
+  paidInvoices: number;
+  paidAmountCents: number;
+  /** ISO-8601 timestamp of the oldest unpaid period start, or null if all paid */
+  oldestUnpaidPeriodStart: string | null;
+  /** True if the merchant has overdue invoices or 2+ outstanding invoices */
+  isBehind: boolean;
+}
+
+/**
+ * Aggregate admin view of billing across all merchants.
+ */
+export interface BillingOverview {
+  totals: {
+    merchantsCount: number;
+    merchantsBehindCount: number;
+    merchantsPaidCount: number;
+    totalOutstandingCents: number;
+    totalPaidAllTimeCents: number;
+    currentMonthVolumeCents: number;
+    currentMonthProjectedCents: number;
+  };
+  merchants: BillingOverviewMerchantRow[];
+}
+
+/**
  * Webhook event types.
  */
 export type WebhookEventType = 'payment.status_changed';
@@ -334,7 +439,7 @@ export interface X402PaymentPayload {
   network: string;
   /** Signed transaction and nonce */
   payload: {
-    /** HF26-format signed Hive transaction with two transfer operations (net + fee) */
+    /** HF26-format signed Hive transaction with a transfer operation */
     signedTransaction: Record<string, unknown>;
     /** Unique nonce for replay protection */
     nonce: string;
@@ -405,18 +510,11 @@ export interface ApiCreatePaymentResponse {
   id: string;
   slug: string;
   redirectUrl: string;
-  fee: string;
-  net: string;
 }
 
 /** @internal */
 export interface ApiPaymentStatusResponse {
   status: string;
-}
-
-/** @internal */
-export interface ApiFeeResponse {
-  percentFee: number;
 }
 
 /** @internal */
@@ -479,6 +577,152 @@ export interface ApiPaginatedPaymentsResponse {
 export interface ApiPaginatedMerchantsResponse {
   data: ApiMerchant[];
   pagination: ApiPaginationInfo;
+}
+
+/** @internal */
+export interface ApiBillingPeriod {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  totalVolumeCents: number;
+  transactionCount: number;
+  invoiceAmountCents: number;
+  status: BillingPeriodStatus;
+  invoiceSessionId: string | null;
+  invoiceSlug: string | null;
+  invoicePaymentUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** @internal */
+export interface ApiMerchantBillingSummary {
+  merchantId: string;
+  merchantName: string;
+  currentMonth: {
+    periodStart: string;
+    periodEnd: string;
+    totalVolumeCents: number;
+    transactionCount: number;
+    projectedInvoiceCents: number;
+  };
+  outstandingInvoices: ApiBillingPeriod[];
+  paidInvoices: ApiBillingPeriod[];
+  outstandingAmountCents: number;
+  totalPaidCents: number;
+  feeTiers: FeeTier[];
+}
+
+/** @internal */
+export interface ApiBillingOverviewMerchantRow {
+  merchantId: string;
+  merchantName: string;
+  hiveAccountName: string;
+  iconUrl?: string;
+  currentMonthVolumeCents: number;
+  currentMonthProjectedCents: number;
+  outstandingInvoices: number;
+  outstandingAmountCents: number;
+  paidInvoices: number;
+  paidAmountCents: number;
+  oldestUnpaidPeriodStart: string | null;
+  isBehind: boolean;
+}
+
+/** @internal */
+export interface ApiBillingOverview {
+  totals: {
+    merchantsCount: number;
+    merchantsBehindCount: number;
+    merchantsPaidCount: number;
+    totalOutstandingCents: number;
+    totalPaidAllTimeCents: number;
+    currentMonthVolumeCents: number;
+    currentMonthProjectedCents: number;
+  };
+  merchants: ApiBillingOverviewMerchantRow[];
+}
+
+/** @internal */
+export interface ApiAdminBillingPeriod extends ApiBillingPeriod {
+  merchantId: string;
+  merchantName: string | null;
+  merchantHiveAccountName: string | null;
+  merchantIconUrl: string | null;
+}
+
+/** @internal */
+export interface ApiPaginatedAdminBillingPeriods {
+  data: ApiAdminBillingPeriod[];
+  pagination: ApiPaginationInfo;
+}
+
+/**
+ * Single admin-visible billing period (includes merchant identification).
+ */
+export interface AdminBillingPeriod extends BillingPeriod {
+  merchantId: string;
+  merchantName: string | null;
+  merchantHiveAccountName: string | null;
+  merchantIconUrl: string | null;
+}
+
+/**
+ * Paginated response for admin billing periods.
+ */
+export interface PaginatedAdminBillingPeriods {
+  data: AdminBillingPeriod[];
+  pagination: PaginationInfo;
+}
+
+/**
+ * Options for listing admin billing periods.
+ */
+export interface ListBillingPeriodsOptions {
+  /** Page number (default: 1) */
+  page?: number;
+  /** Items per page (default: 20, max: 100) */
+  limit?: number;
+  /** Filter by merchant ID */
+  merchantId?: string;
+  /** Filter by status */
+  status?: BillingPeriodStatus;
+}
+
+/**
+ * Options for generating monthly invoices (admin).
+ */
+export interface GenerateInvoicesOptions {
+  /** Calendar month (1-12) */
+  month: number;
+  /** Calendar year (e.g. 2026) */
+  year: number;
+}
+
+/**
+ * Result of a monthly invoice generation run (admin).
+ */
+export interface GenerateInvoicesResult {
+  invoicesGenerated: number;
+  totalBilledCents: number;
+  details: Array<{
+    merchantId: string;
+    merchantName: string;
+    volumeCents: number;
+    invoiceCents: number;
+  }>;
+}
+
+/**
+ * A single fee tier in the billing schedule.
+ */
+export interface FeeTier {
+  /** Inclusive lower bound of the tier (USD cents) */
+  minVolumeCents: number;
+  /** Inclusive upper bound of the tier (USD cents), or null for the top tier */
+  maxVolumeCents: number | null;
+  /** Percentage fee charged for volume that falls in this tier (e.g. 1.5 = 1.5%) */
+  percentFee: number;
 }
 
 /**

@@ -11,7 +11,6 @@ import type {
   ApiPaginatedPaymentsResponse,
   ApiPaymentSession,
   ApiPaymentStatusResponse,
-  ApiFeeResponse,
   CreatePaymentOptions,
   CreatedPayment,
   IteratePaymentsOptions,
@@ -123,23 +122,6 @@ export class Payments implements AsyncIterable<Payment> {
   public async getStatus (id: string): Promise<PaymentStatus> {
     const response = await this.http.get<ApiPaymentStatusResponse>(`${this.basePath}/${id}/status`);
     return toPaymentStatus(response);
-  }
-
-  /**
-   * Retrieves the current fee rate for payments.
-   * The rate at session creation time applies to that session.
-   *
-   * @returns Current fee percentage
-   *
-   * @example
-   * ```ts
-   * const fee = await hivepay.payments.getFeeRate();
-   * console.log(`Current fee: ${fee}%`); // "Current fee: 1.5%"
-   * ```
-   */
-  public async getFeeRate (): Promise<number> {
-    const response = await this.http.get<ApiFeeResponse>(`${this.basePath}/fee`);
-    return response.percentFee;
   }
 
   /**
